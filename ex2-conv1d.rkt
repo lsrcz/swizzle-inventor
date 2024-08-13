@@ -26,6 +26,10 @@
 
 #lang rosette
 
+(require rosette/solver/smt/bitwuzla)
+
+(current-solver (bitwuzla))
+
 (require "util.rkt" "cuda.rkt" "cuda-synth.rkt")
 
 (define n-block 2)
@@ -101,12 +105,12 @@
   (define o (create-accumulator (list * +) identity blockDim))
 
   (for/bounded ([i 3])
-    (let* ([index (ite (?cond (@dup i) localId) (@dup 0) (@dup 1))]
-           [lane (?sw-xform localId warpSize
-                            i warpSize [])] 
+    (let* ([index (ite (?cond2 (@dup i) localId) (@dup 0) (@dup 1))]
+           [lane (?sw-xform0 localId warpSize
+                            i warpSize )] 
            [x (shfl (get I-cached index) lane)]
            [w (@dup (get W i))])
-      (accumulate o (list w x) #:pred (?cond localId (@dup i))) ; (?cond localId (@dup i))
+      (accumulate o (list w x) #:pred (?cond2 localId (@dup i))) ; (?cond localId (@dup i))
       ))
   
   (reg-to-global o O gid)
@@ -168,8 +172,8 @@
     (define I-cached (create-matrix-local (x-y-z n-regs)))
     (global-to-local I I-cached
                         (x-y-z (??)) ;; stride
-                        (x-y-z (?warp-offset [(get-x blockId) (get-x blockDim)] [warpId warpSize])) ;; offset
-                        (x-y-z (?warp-size warpSize 1)) ;; load size
+                        (x-y-z (?warp-offset2 (get-x blockId) (get-x blockDim) warpId warpSize)) ;; offset
+                        (x-y-z (?warp-size2 warpSize 1)) ;; load size
                         #f)
     
     ;; sketch ends
