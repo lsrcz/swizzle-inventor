@@ -29,14 +29,86 @@
 
 (require rosette/lib/synthax)
 (require "util.rkt" "cuda.rkt")
-(provide ?? ?lane ?lane-mod
+#;(provide ?? ?lane ?lane-mod
          ?sw-xform ?sw-xform-easy ?sw-xform-extra
          ?cond ?cond-easy
          ?warp-size ?warp-offset
          print-forms choose
          ID get-grid-storage collect-inputs check-warp-input num-regs vector-list-append
          unique unique-warp unique-list)
+(provide ?? ?cond2 ?cond3 ?sw-xform-easy0 ?sw-xform0 ?warp-offset2 ?warp-size2 print-forms choose
+         ID get-grid-storage collect-inputs check-warp-input num-regs vector-list-append
+         unique unique-warp unique-list)
 
+(define-grammar (?const1 c)
+  [start (choose 0 1 -1 c)])
+
+(define-grammar (?cond2 x y)
+  [start
+    (choose #t #f
+            ((choose < <= > >= =) (choose x y)
+                                  ((choose + -) 1 (choose 0 1 -1 warpSize) (choose x y))))])
+(define-grammar (?cond3 x y z)
+  [start
+    (choose #t #f
+            ((choose < <= > >= =) (choose x y z)
+                                  ((choose + -) 1 (choose 0 1 -1 warpSize) (choose x y z))))])
+
+(define-grammar (?sw-xform-easy0 eid n k m)
+  [start
+    (sw-xform eid n (choose 0 1 -1) n n 1
+         k m (choose 0 1 -1) m (choose 0 1 -1 m))]
+  )
+
+;; Proposed template for transformation index swizzle (full template)
+(define-grammar (?sw-xform0 eid n k m)
+   [start 
+    (sw-xform eid n (choose 0 1 -1) (choose n 0 1 -1) (choose n 0 1 -1) (choose 1 -1)
+         k m (choose 0 1 -1) (choose m 0 1 -1) (choose m 0 1 -1))]
+  )
+
+(define-grammar (?warp-offset2 id0 size0 id1 size1)
+  [start (+ (??) (* (??) id0 size0) (* (??) id1 size1))])
+
+(?cond2 1 2)
+(?sw-xform-easy0 1 2 3 4)
+
+(define-grammar (?warp-size2 x y)
+  [non-const-case (choose (non-const-base) (non-const-step))]
+  [non-const-base (choose x y (??))]
+  [non-const-step
+     (choose x y
+	     ((choose + -) (non-const-case) (const-case))
+	     (- (const-case) (non-const-case))
+	     (* (??) (non-const-case)))]
+  [const-case (choose (const-base) (const-step))]
+  [const-base (choose x y (??))]
+  [const-step (choose x y (??) ((choose + -) (const-case) (const-case)))]
+)
+
+#;(define-synthax (?warp-size-const x ... depth)
+ #:base (choose x ... (??))
+ #:else (choose
+         x ... (??)
+         ((choose + -)
+          (?warp-size-const x ... (- depth 1))
+          (?warp-size-const x ... (- depth 1)))))
+
+#;(define-synthax (?warp-size x ... depth)
+ #:base (choose x ...)
+ #:else (choose
+         x ...
+         ((choose + -)
+          (?warp-size x ... (- depth 1))
+          (?warp-size-const x ... (- depth 1)))
+         (-
+          (?warp-size-const x ... (- depth 1))
+          (?warp-size x ... (- depth 1)))
+         (* (??) (?warp-size x ... (- depth 1)))
+         ))
+
+
+#|
 ;; Condition swizzle (easy template, smaller search space)
 (define-synthax ?cond-easy
   ([(?cond-easy x ...)
@@ -177,6 +249,7 @@
   ([(?warp-offset [id size] ...)
     (+ (??) (* (??) id size) ...)])
   )
+  |#
 
 
 ;;;;;;;;;;;;;;;;; for data loading synthesis ;;;;;;;;;;;;;;;;;;;;

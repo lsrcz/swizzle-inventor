@@ -26,6 +26,10 @@
 
 #lang rosette
 
+(require rosette/solver/smt/bitwuzla)
+
+(current-solver (bitwuzla))
+
 (require "util.rkt" "cuda.rkt" "cuda-synth.rkt")
 
 (define WARP_SIZE 16)
@@ -124,12 +128,12 @@
   (define o (create-accumulator (list +) /9 blockDim))
   
   (for* ([ky 3] [kx 3])
-    (let* ([index-j (ite (?cond warp-row ky) (@dup 0) (@dup 1))]
-           [index-i (ite (?cond warp-col kx) (@dup 0) (@dup 1))]
-           [lane-x (?sw-xform warp-col W
-                              kx 3 [])]
-           [lane-y (?sw-xform warp-row H
-                              ky 3 [])]
+    (let* ([index-j (ite (?cond2 warp-row ky) (@dup 0) (@dup 1))]
+           [index-i (ite (?cond2 warp-col kx) (@dup 0) (@dup 1))]
+           [lane-x (?sw-xform0 warp-col W
+                              kx 3)]
+           [lane-y (?sw-xform0 warp-row H
+                              ky 3)]
            [lane (+ (* lane-y W) lane-x)]
            [x (shfl (get I-cached index-i index-j) lane)])
       (accumulate o x)
@@ -160,12 +164,12 @@
   (define o (create-accumulator (list +) /9 blockDim))
   
   (for* ([ky 7] [kx 7])
-    (let* ([index-j (ite (?cond warp-row ky [H]) (@dup 0) (ite (?cond warp-row ky [H]) (@dup 1) (@dup 2)))]
+    (let* ([index-j (ite (?cond3 warp-row ky H) (@dup 0) (ite (?cond3 warp-row ky H) (@dup 1) (@dup 2)))]
            [index-i (ite (<= kx warp-col) (@dup 0) (ite (<= kx (+ W warp-col)) (@dup 1) (@dup 2)))]
-           [lane-x (?sw-xform-easy warp-col W
-                              kx 7 [])]
-           [lane-y (?sw-xform-easy warp-row H
-                              ky 7 [])]
+           [lane-x (?sw-xform-easy0 warp-col W
+                              kx 7)]
+           [lane-y (?sw-xform-easy0 warp-row H
+                              ky 7)]
            [lane (+ (* lane-y W) lane-x)]
            [x (shfl (get I-cached index-i index-j) lane)])
       (accumulate o x)

@@ -13,3 +13,8 @@
 *.cubin
 *.reg.c
 *.gpu
+.envrc
+.direnv/
+in.txt
+out.txt
+err.txt

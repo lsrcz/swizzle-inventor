@@ -26,6 +26,9 @@
  |#
 
 #lang rosette
+(require rosette/solver/smt/bitwuzla)
+
+(current-solver (bitwuzla))
 
 (require "util.rkt" "cuda.rkt" "cuda-synth.rkt")
 
@@ -99,11 +102,11 @@
   (define o (create-accumulator (list +) /3 blockDim))
 
   (for/bounded ([i 3])
-    (let* ([index (ite (?cond (@dup i) localId) (@dup 0) (@dup 1))]
-           [lane (?sw-xform localId warpSize
-                            i warpSize [])] 
+    (let* ([index (ite (?cond2 (@dup i) localId) (@dup 0) (@dup 1))]
+           [lane (?sw-xform0 localId warpSize
+                            i warpSize )] 
            [x (shfl (get I-cached index) lane)])
-      (accumulate o x #:pred (?cond localId (@dup i))) ; (?cond localId (@dup i))
+      (accumulate o x #:pred (?cond2 localId (@dup i))) ; (?cond localId (@dup i))
       ))
   
   (reg-to-global o O gid)
@@ -165,8 +168,8 @@
     (define I-cached (create-matrix-local (x-y-z n-regs)))
     (global-to-local I I-cached
                         (x-y-z (??)) ;; stride
-                        (x-y-z (?warp-offset [(get-x blockId) (get-x blockDim)] [warpId warpSize])) ;; offset
-                        (x-y-z (?warp-size warpSize 1)) ;; load size
+                        (x-y-z (?warp-offset2 (get-x blockId) (get-x blockDim) warpId warpSize)) ;; offset
+                        (x-y-z (?warp-size2 warpSize 1)) ;; load size
                         #f)
     
     ;; sketch ends
@@ -181,7 +184,7 @@
     #;(for ([key-val (hash->list sol-hash)])
       (let ([key (car key-val)]
             [val (cdr key-val)])
-        (when (string-contains? (format "~a" key) "stencil:115") ;; stride
+        (when (string-containsa (format "~a" key) "stencil:115") ;; stride
           (assert (not (equal? key val)))
           (pretty-display `(v ,key ,val ,(string-contains? (format "~a" key) "stencil:113")))))
       ))
